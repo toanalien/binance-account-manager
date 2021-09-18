@@ -14,11 +14,21 @@ func main() {
 		apiKey    = viper.Get("API_KEY").(string)
 		secretKey = viper.Get("SECRET_KEY").(string)
 	)
+	ctx := context.Background()
+
 	client := binance.NewClient(apiKey, secretKey)
-	res, err := client.NewGetAccountService().Do(context.Background())
+	margin, _ := client.NewGetIsolatedMarginAccountService().Do(ctx)
+	userAssets := margin.Assets
+
+	for _, asset := range userAssets {
+		fmt.Println(asset)
+	}
+
+	res, err := client.NewGetAccountService().Do(ctx)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(res.Balances)
+	fmt.Println(res)
+
 }
