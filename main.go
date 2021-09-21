@@ -121,12 +121,15 @@ func main() {
 
 		if v.Symbol == "BTCUSDT" {
 			indexPrice, _ := strconv.ParseFloat(v.IndexPrice, 64)
+			baseAssetNet, _ := strconv.ParseFloat(v.BaseAsset.NetAsset, 64)
 			liquidatePrice, _ := strconv.ParseFloat(v.LiquidatePrice, 64)
 			avgPrice := avgPrice(v, isolatedMarginTrades)
+			profit := baseAssetNet * (indexPrice - avgPrice)
 			liquidatedRate, _ := strconv.ParseFloat(v.LiquidateRate, 64)
 			table.SetHeader([]string{"BTCUSDT"})
 			table.Append([]string{"Avg", fmt.Sprintf("%.2f", avgPrice)})
 			table.Append([]string{"Index", fmt.Sprintf("%.2f", indexPrice)})
+			table.Append([]string{"Profit $", fmt.Sprintf("%.2f", profit)})
 			table.Append([]string{"Liquidated", fmt.Sprintf("%.2f", liquidatePrice)})
 			table.Append([]string{"% To Liq", fmt.Sprintf("%.2f", liquidatedRate)})
 			table.Render()
