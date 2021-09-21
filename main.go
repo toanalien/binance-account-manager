@@ -117,9 +117,19 @@ func main() {
 	table.Render()
 
 	for _, v := range userAssets {
+		table = tablewriter.NewWriter(os.Stdout)
+
 		if v.Symbol == "BTCUSDT" {
 			indexPrice, _ := strconv.ParseFloat(v.IndexPrice, 64)
-			fmt.Printf("%s\n\tAvg:   %.2f\n\tIndex: %.2f", v.Symbol, avgPrice(v, isolatedMarginTrades), indexPrice)
+			liquidatePrice, _ := strconv.ParseFloat(v.LiquidatePrice, 64)
+			avgPrice := avgPrice(v, isolatedMarginTrades)
+			liquidatedRate, _ := strconv.ParseFloat(v.LiquidateRate, 64)
+			table.SetHeader([]string{"BTCUSDT"})
+			table.Append([]string{"Avg", fmt.Sprintf("%.2f", avgPrice)})
+			table.Append([]string{"Index", fmt.Sprintf("%.2f", indexPrice)})
+			table.Append([]string{"Liquidated", fmt.Sprintf("%.2f", liquidatePrice)})
+			table.Append([]string{"% To Liq", fmt.Sprintf("%.2f", liquidatedRate)})
+			table.Render()
 		}
 	}
 
