@@ -12,6 +12,32 @@ import (
 	"time"
 )
 
+func avgPrice(asset binance.IsolatedMarginAsset, isolatedMarginTrades []*binance.TradeV3) (avgPrice float64) {
+	baseAssetNet, _ := strconv.ParseFloat(asset.BaseAsset.NetAsset, 64)
+	calBaseAssetNet := baseAssetNet
+	cost := 0.0
+	for _, trade := range isolatedMarginTrades {
+		if calBaseAssetNet < 0.001 {
+			break
+		} else {
+			quantity, _ := strconv.ParseFloat(trade.Quantity, 64)
+			commission, _ := strconv.ParseFloat(trade.Commission, 64)
+			price, _ := strconv.ParseFloat(trade.Price, 64)
+			if trade.IsBuyer {
+				totalQuantity := quantity - commission
+				if calBaseAssetNet > totalQuantity {
+					calBaseAssetNet -= totalQuantity
+				} else {
+					calBaseAssetNet = 0
+				}
+				cost += totalQuantity * price
+			}
+		}
+	}
+	avgPrice = cost / baseAssetNet
+	return
+}
+
 func main() {
 	viper.SetConfigFile(".env")
 	_ = viper.ReadInConfig()
@@ -36,13 +62,15 @@ func main() {
 	})
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Symbol", "QuoteAsset", "BaseAsset", "LiquidatePrice"})
+	table.SetHeader([]string{"Symbol", "QuoteAsset", "BaseAsset", "LiquidatePrice", "IndexPrice", "Balance"})
 	for _, v := range userAssets {
 		liquidatePrice, _ := strconv.ParseFloat(v.LiquidatePrice, 64)
-		quoteAsset, _ := strconv.ParseFloat(v.QuoteAsset.TotalAsset, 64)
-		baseAsset, _ := strconv.ParseFloat(v.BaseAsset.TotalAsset, 64)
+		quoteAsset, _ := strconv.ParseFloat(v.QuoteAsset.NetAsset, 64)
+		baseAsset, _ := strconv.ParseFloat(v.BaseAsset.NetAsset, 64)
+		indexPrice, _ := strconv.ParseFloat(v.IndexPrice, 64)
+		balance := baseAsset*indexPrice + quoteAsset
 		if liquidatePrice != 0 || quoteAsset != 0 || baseAsset != 0 {
-			table.Append([]string{v.Symbol, v.QuoteAsset.NetAsset, v.BaseAsset.NetAsset, v.LiquidatePrice})
+			table.Append([]string{v.Symbol, v.QuoteAsset.NetAsset, v.BaseAsset.NetAsset, v.LiquidatePrice, v.IndexPrice, fmt.Sprintf("%f", balance)})
 		}
 	}
 	table.Render()
@@ -87,5 +115,12 @@ func main() {
 		table.Append([]string{v.Symbol, side, v.Price, v.CommissionAsset, v.Commission, v.Quantity, fmt.Sprintf("%f", quoteQuantity), time.UnixMilli(v.Time).Format("2006-01-02 15:04:05 -0700")})
 	}
 	table.Render()
+
+	for _, v := range userAssets {
+		if v.Symbol == "BTCUSDT" {
+			indexPrice, _ := strconv.ParseFloat(v.IndexPrice, 64)
+			fmt.Printf("%s\n\tAvg:   %.2f\n\tIndex: %.2f", v.Symbol, avgPrice(v, isolatedMarginTrades), indexPrice)
+		}
+	}
 
 }
