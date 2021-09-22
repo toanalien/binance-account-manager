@@ -44,13 +44,24 @@ func avgPrice(asset binance.IsolatedMarginAsset, isolatedMarginTrades []*binance
 }
 
 func main() {
-	//_, filePath, _, _ := runtime.Caller(0)
-	configFile, _ := os.Getwd()
-	fmt.Println(configFile)
-	viper.SetConfigFile(configFile + string(filepath.Separator) + ".env")
-	err := viper.ReadInConfig()
+	ex, err := os.Executable()
 	if err != nil {
-		log.Println("Cannot read env file")
+		panic(err)
+	}
+	configPath := filepath.Dir(ex)
+	fmt.Println(configPath)
+	// load env when build binary
+	viper.SetConfigFile(configPath + string(filepath.Separator) + ".env")
+	err = viper.ReadInConfig()
+	if err != nil {
+		log.Println("Cannot read env file when binary run")
+	}
+
+	// load env when develop in goland
+	viper.SetConfigFile(".env")
+	err = viper.ReadInConfig()
+	if err != nil {
+		log.Println("Cannot read env file when debug run")
 	}
 	var (
 		apiKey         = viper.Get("API_KEY").(string)
@@ -132,7 +143,6 @@ func main() {
 	table.Render()
 
 	for _, v := range userAssets {
-		//table = tablewriter.NewWriter(os.Stdout)
 		buf := new(bytes.Buffer)
 		table = tablewriter.NewWriter(buf)
 
