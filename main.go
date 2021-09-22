@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/adshao/go-binance/v2"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/viper"
+	"log"
+	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -42,8 +46,9 @@ func main() {
 	viper.SetConfigFile(".env")
 	_ = viper.ReadInConfig()
 	var (
-		apiKey    = viper.Get("API_KEY").(string)
-		secretKey = viper.Get("SECRET_KEY").(string)
+		apiKey         = viper.Get("API_KEY").(string)
+		secretKey      = viper.Get("SECRET_KEY").(string)
+		discordWebHook = viper.Get("DISCORD_WEBHOOK").(string)
 	)
 	ctx := context.Background()
 
@@ -86,9 +91,12 @@ func main() {
 	})
 
 	table = tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Symbol", "ExecutedQuantity", "QuoteQuantity", "Side", "Status", "Type", "TimeInForce"})
+	table.SetHeader([]string{"Symbol", "ExecutedQuantity", "OrigQuantity", "Side", "Price", "Cost", "Status", "Type", "TimeInForce"})
 	for _, v := range isolatedMarginOpenOrders {
-		table.Append([]string{v.Symbol, v.ExecutedQuantity, v.CummulativeQuoteQuantity, string(v.Side), string(v.Status), string(v.Type), time.UnixMilli(v.Time).Format("2006-01-02 15:04:05 -0700")})
+		origQuantity, _ := strconv.ParseFloat(v.OrigQuantity, 64)
+		price, _ := strconv.ParseFloat(v.Price, 64)
+		cost := origQuantity * price
+		table.Append([]string{v.Symbol, v.ExecutedQuantity, v.OrigQuantity, string(v.Side), v.Price, fmt.Sprintf("%.2f", cost), string(v.Status), string(v.Type), time.UnixMilli(v.Time).Format("2006-01-02 15:04:05 -0700")})
 	}
 	table.Render()
 
@@ -117,7 +125,9 @@ func main() {
 	table.Render()
 
 	for _, v := range userAssets {
-		table = tablewriter.NewWriter(os.Stdout)
+		//table = tablewriter.NewWriter(os.Stdout)
+		buf := new(bytes.Buffer)
+		table = tablewriter.NewWriter(buf)
 
 		if v.Symbol == "BTCUSDT" {
 			indexPrice, _ := strconv.ParseFloat(v.IndexPrice, 64)
@@ -133,6 +143,18 @@ func main() {
 			table.Append([]string{"Liquidated", fmt.Sprintf("%.2f", liquidatePrice)})
 			table.Append([]string{"% To Liq", fmt.Sprintf("%.2f", liquidatedRate)})
 			table.Render()
+
+			content := map[string]string{"content": "```" + buf.String() + "```"}
+			jsonValue, _ := json.Marshal(content)
+			req, err := http.NewRequest("POST", discordWebHook, bytes.NewBuffer(jsonValue))
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{}
+			do, err := client.Do(req)
+			_ = do
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 
