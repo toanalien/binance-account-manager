@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"time"
@@ -43,8 +44,14 @@ func avgPrice(asset binance.IsolatedMarginAsset, isolatedMarginTrades []*binance
 }
 
 func main() {
-	viper.SetConfigFile(".env")
-	_ = viper.ReadInConfig()
+	//_, filePath, _, _ := runtime.Caller(0)
+	configFile, _ := os.Getwd()
+	fmt.Println(configFile)
+	viper.SetConfigFile(configFile + string(filepath.Separator) + ".env")
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Println("Cannot read env file")
+	}
 	var (
 		apiKey         = viper.Get("API_KEY").(string)
 		secretKey      = viper.Get("SECRET_KEY").(string)
