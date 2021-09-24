@@ -36,6 +36,11 @@ func avgPrice(asset binance.IsolatedMarginAsset, isolatedMarginTrades []*binance
 					calBaseAssetNet = 0
 				}
 				cost += totalQuantity * price
+			} else {
+				calBaseAssetNet += quantity
+				quoteQuantity := price * quantity
+				totalQuantity := quoteQuantity - commission
+				cost -= totalQuantity
 			}
 		}
 	}
@@ -174,5 +179,4 @@ func main() {
 			}
 		}
 	}
-
 }
